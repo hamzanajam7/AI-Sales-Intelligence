@@ -63,6 +63,22 @@ export interface PipelineStatus {
   error: string | null;
 }
 
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  toolCall?: string;
+  isStreaming?: boolean;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface SemanticSearchResult {
   contractor_id: number;
   company_name: string;

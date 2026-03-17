@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -21,8 +21,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
-import { getContractors, semanticSearch } from "@/lib/api";
+import { getContractors, semanticSearch, getExportUrl } from "@/lib/api";
 import type { Contractor, SemanticSearchResult } from "@/lib/types";
+import { MAX_COMPARE_LEADS } from "@/lib/constants";
 import {
   ArrowUpDown,
   ArrowUp,
@@ -32,103 +33,16 @@ import {
   ChevronRight,
   Star,
   Sparkles,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
 
-const columns: ColumnDef<Contractor>[] = [
-  {
-    accessorKey: "lead_score",
-    header: "Score",
-    cell: ({ row }) => (
-      <LeadScoreBadge
-        score={row.original.lead_score}
-        grade={row.original.lead_grade}
-      />
-    ),
-    enableSorting: true,
-  },
-  {
-    accessorKey: "company_name",
-    header: "Company",
-    cell: ({ row }) => (
-      <Link
-        href={`/leads/${row.original.id}`}
-        className="font-medium text-blue-600 hover:underline"
-      >
-        {row.original.company_name}
-      </Link>
-    ),
-    enableSorting: true,
-  },
-  {
-    accessorKey: "certification_level",
-    header: "Certification",
-    cell: ({ row }) => {
-      const cert = row.original.certification_level;
-      if (!cert) return <span className="text-gray-400">--</span>;
-      const isMaster = cert.toLowerCase().includes("master");
-      return (
-        <Badge variant={isMaster ? "default" : "secondary"}>
-          {cert}
-        </Badge>
-      );
-    },
-    enableSorting: true,
-  },
-  {
-    accessorKey: "city",
-    header: "Location",
-    cell: ({ row }) => {
-      const { city, state } = row.original;
-      if (!city && !state) return <span className="text-gray-400">--</span>;
-      return <span>{[city, state].filter(Boolean).join(", ")}</span>;
-    },
-    enableSorting: true,
-  },
-  {
-    accessorKey: "star_rating",
-    header: "Stars",
-    cell: ({ row }) => {
-      const rating = row.original.star_rating;
-      if (!rating) return <span className="text-gray-400">--</span>;
-      return (
-        <div className="flex items-center gap-1">
-          <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-          <span className="text-sm">{rating.toFixed(1)}</span>
-        </div>
-      );
-    },
-    enableSorting: true,
-  },
-  {
-    accessorKey: "review_count",
-    header: "Reviews",
-    enableSorting: true,
-  },
-  {
-    accessorKey: "distance_miles",
-    header: "Distance",
-    cell: ({ row }) => {
-      const d = row.original.distance_miles;
-      if (!d) return <span className="text-gray-400">--</span>;
-      return <span>{d.toFixed(1)} mi</span>;
-    },
-    enableSorting: true,
-  },
-  {
-    id: "actions",
-    header: "",
-    cell: ({ row }) => (
-      <Link href={`/leads/${row.original.id}`}>
-        <Button variant="ghost" size="sm">
-          View
-        </Button>
-      </Link>
-    ),
-  },
-];
+interface LeadsTableProps {
+  selectedIds: number[];
+  onSelectionChange: (ids: number[]) => void;
+}
 
-export function LeadsTable() {
+export function LeadsTable({ selectedIds, onSelectionChange }: LeadsTableProps) {
   const [data, setData] = useState<Contractor[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -144,6 +58,123 @@ export function LeadsTable() {
   const [semanticResults, setSemanticResults] = useState<SemanticSearchResult[]>([]);
 
   const pageSize = 20;
+
+  const columns: ColumnDef<Contractor>[] = useMemo(() => [
+    {
+      id: "select",
+      header: "",
+      cell: ({ row }) => {
+        const id = row.original.id;
+        const isSelected = selectedIds.includes(id);
+        return (
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-gray-300 accent-blue-600"
+            checked={isSelected}
+            disabled={!isSelected && selectedIds.length >= MAX_COMPARE_LEADS}
+            onChange={() => {
+              if (isSelected) {
+                onSelectionChange(selectedIds.filter((sid) => sid !== id));
+              } else {
+                onSelectionChange([...selectedIds, id]);
+              }
+            }}
+          />
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      accessorKey: "lead_score",
+      header: "Score",
+      cell: ({ row }) => (
+        <LeadScoreBadge
+          score={row.original.lead_score}
+          grade={row.original.lead_grade}
+        />
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "company_name",
+      header: "Company",
+      cell: ({ row }) => (
+        <Link
+          href={`/leads/${row.original.id}`}
+          className="font-medium text-blue-600 hover:underline"
+        >
+          {row.original.company_name}
+        </Link>
+      ),
+      enableSorting: true,
+    },
+    {
+      accessorKey: "certification_level",
+      header: "Certification",
+      cell: ({ row }) => {
+        const cert = row.original.certification_level;
+        if (!cert) return <span className="text-gray-400">--</span>;
+        const isMaster = cert.toLowerCase().includes("master");
+        return (
+          <Badge variant={isMaster ? "default" : "secondary"}>
+            {cert}
+          </Badge>
+        );
+      },
+      enableSorting: true,
+    },
+    {
+      accessorKey: "city",
+      header: "Location",
+      cell: ({ row }) => {
+        const { city, state } = row.original;
+        if (!city && !state) return <span className="text-gray-400">--</span>;
+        return <span>{[city, state].filter(Boolean).join(", ")}</span>;
+      },
+      enableSorting: true,
+    },
+    {
+      accessorKey: "star_rating",
+      header: "Stars",
+      cell: ({ row }) => {
+        const rating = row.original.star_rating;
+        if (!rating) return <span className="text-gray-400">--</span>;
+        return (
+          <div className="flex items-center gap-1">
+            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+            <span className="text-sm">{rating.toFixed(1)}</span>
+          </div>
+        );
+      },
+      enableSorting: true,
+    },
+    {
+      accessorKey: "review_count",
+      header: "Reviews",
+      enableSorting: true,
+    },
+    {
+      accessorKey: "distance_miles",
+      header: "Distance",
+      cell: ({ row }) => {
+        const d = row.original.distance_miles;
+        if (!d) return <span className="text-gray-400">--</span>;
+        return <span>{d.toFixed(1)} mi</span>;
+      },
+      enableSorting: true,
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => (
+        <Link href={`/leads/${row.original.id}`}>
+          <Button variant="ghost" size="sm">
+            View
+          </Button>
+        </Link>
+      ),
+    },
+  ], [selectedIds, onSelectionChange]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -189,6 +220,19 @@ export function LeadsTable() {
       setSearch(searchInput);
       setPage(1);
     }
+  };
+
+  const handleExport = () => {
+    const sortBy = sorting[0]?.id || "lead_score";
+    const sortOrder = sorting[0]?.desc ? "desc" : "asc";
+    const url = getExportUrl({
+      sort_by: sortBy,
+      sort_order: sortOrder,
+      certification: certFilter || undefined,
+      min_score: minScore,
+      search: search || undefined,
+    });
+    window.open(url, "_blank");
   };
 
   const table = useReactTable({
@@ -265,6 +309,10 @@ export function LeadsTable() {
               setPage(1);
             }}
           />
+          <Button variant="outline" size="sm" onClick={handleExport} className="whitespace-nowrap">
+            <Download className="h-4 w-4 mr-1" />
+            Export CSV
+          </Button>
         </div>
       </div>
 
@@ -354,7 +402,14 @@ export function LeadsTable() {
                     </TableRow>
                   ) : (
                     table.getRowModel().rows.map((row) => (
-                      <TableRow key={row.id} className="hover:bg-gray-50">
+                      <TableRow
+                        key={row.id}
+                        className={
+                          selectedIds.includes(row.original.id)
+                            ? "bg-blue-50 hover:bg-blue-100"
+                            : "hover:bg-gray-50"
+                        }
+                      >
                         {row.getVisibleCells().map((cell) => (
                           <TableCell key={cell.id}>
                             {flexRender(

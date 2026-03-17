@@ -1,7 +1,10 @@
 from __future__ import annotations
+import csv
+import io
 import json
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, asc
 from app.database import get_db
@@ -79,6 +82,25 @@ def _contractor_to_detail(c: Contractor) -> ContractorDetail:
     )
 
 
+def _apply_filters(query, certification: Optional[str], min_score: Optional[int], search: Optional[str]):
+    if certification:
+        query = query.where(Contractor.certification_level == certification)
+    if min_score is not None:
+        query = query.where(Contractor.lead_score >= min_score)
+    if search:
+        query = query.where(Contractor.company_name.ilike(f"%{search}%"))
+    return query
+
+
+def _apply_sorting(query, sort_by: str, sort_order: str):
+    sort_column = getattr(Contractor, sort_by, Contractor.lead_score)
+    if sort_order == "desc":
+        query = query.order_by(desc(sort_column).nulls_last())
+    else:
+        query = query.order_by(asc(sort_column).nulls_last())
+    return query
+
+
 @router.get("", response_model=ContractorListResponse)
 async def list_contractors(
     sort_by: str = Query("lead_score", description="Field to sort by"),
@@ -91,27 +113,12 @@ async def list_contractors(
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Contractor)
+    query = _apply_filters(query, certification, min_score, search)
 
-    # Filters
-    if certification:
-        query = query.where(Contractor.certification_level == certification)
-    if min_score is not None:
-        query = query.where(Contractor.lead_score >= min_score)
-    if search:
-        query = query.where(Contractor.company_name.ilike(f"%{search}%"))
-
-    # Count total
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar() or 0
 
-    # Sort
-    sort_column = getattr(Contractor, sort_by, Contractor.lead_score)
-    if sort_order == "desc":
-        query = query.order_by(desc(sort_column).nulls_last())
-    else:
-        query = query.order_by(asc(sort_column).nulls_last())
-
-    # Paginate
+    query = _apply_sorting(query, sort_by, sort_order)
     query = query.offset((page - 1) * page_size).limit(page_size)
 
     result = await db.execute(query)
@@ -135,6 +142,48 @@ async def semantic_search_contractors(
         return semantic_search(q, top_k=top_k)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Semantic search unavailable: {str(e)}")
+
+
+@router.get("/export")
+async def export_contractors_csv(
+    sort_by: str = Query("lead_score", description="Field to sort by"),
+    sort_order: str = Query("desc", description="asc or desc"),
+    certification: str = Query(None, description="Filter by certification level"),
+    min_score: int = Query(None, description="Minimum lead score"),
+    search: str = Query(None, description="Search by company name"),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Contractor)
+    query = _apply_filters(query, certification, min_score, search)
+    query = _apply_sorting(query, sort_by, sort_order)
+
+    result = await db.execute(query)
+    contractors = result.scalars().all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "company_name", "certification_level", "city", "state", "phone",
+        "website", "star_rating", "review_count", "distance_miles",
+        "estimated_revenue", "employee_count", "years_in_business",
+        "lead_score", "lead_grade", "recommended_action",
+    ])
+    for c in contractors:
+        writer.writerow([
+            c.company_name, c.certification_level or "", c.city or "", c.state or "",
+            c.phone or "", c.website or "", c.star_rating or "", c.review_count or "",
+            f"{c.distance_miles:.1f}" if c.distance_miles else "",
+            c.estimated_revenue or "", c.employee_count or "",
+            c.years_in_business or "", c.lead_score or "", c.lead_grade or "",
+            c.recommended_action or "",
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=leads_export.csv"},
+    )
 
 
 @router.get("/{contractor_id}", response_model=ContractorDetail)

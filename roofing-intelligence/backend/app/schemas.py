@@ -94,6 +94,15 @@ class SemanticSearchResult(BaseModel):
     enrichment_summary: Optional[str] = None
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+
+
 class EnrichmentData(BaseModel):
     estimated_revenue: Optional[str] = None
     employee_count: Optional[str] = None

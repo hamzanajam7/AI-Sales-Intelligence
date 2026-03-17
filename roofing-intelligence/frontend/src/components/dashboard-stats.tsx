@@ -28,14 +28,7 @@ import {
   Cell,
 } from "recharts";
 import Link from "next/link";
-
-const GRADE_COLORS: Record<string, string> = {
-  A: "#22c55e",
-  B: "#3b82f6",
-  C: "#eab308",
-  D: "#f97316",
-  F: "#ef4444",
-};
+import { GRADE_HEX_COLORS } from "@/lib/constants";
 
 const CERT_COLORS = ["#3b82f6", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
 
@@ -98,7 +91,7 @@ export function DashboardView() {
   const gradeData = stats
     ? Object.entries(stats.grade_distribution)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([grade, count]) => ({ grade, count, fill: GRADE_COLORS[grade] || "#94a3b8" }))
+        .map(([grade, count]) => ({ grade, count, fill: GRADE_HEX_COLORS[grade] || "#94a3b8" }))
     : [];
 
   const certData = stats

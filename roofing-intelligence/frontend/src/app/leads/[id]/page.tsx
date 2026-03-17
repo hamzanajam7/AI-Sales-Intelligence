@@ -35,14 +35,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
-
-const gradeColors: Record<string, string> = {
-  A: "bg-green-500",
-  B: "bg-blue-500",
-  C: "bg-yellow-500",
-  D: "bg-orange-500",
-  F: "bg-red-500",
-};
+import { GRADE_CIRCLE_COLORS } from "@/lib/constants";
 
 export default function LeadDetailPage() {
   const params = useParams();
@@ -169,7 +162,7 @@ export default function LeadDetailPage() {
                   <div className="flex items-center gap-4">
                     <div
                       className={`w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold ${
-                        gradeColors[contractor.lead_grade || "C"]
+                        GRADE_CIRCLE_COLORS[contractor.lead_grade || "C"]
                       }`}
                     >
                       {contractor.lead_grade}

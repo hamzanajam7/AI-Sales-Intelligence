@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roofing Lead Intelligence Platform</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#ffffff;--fg:#111827;--muted:#6b7280;--accent:#2563eb;--accent-light:#eff6ff;--border:#e5e7eb;--card:#f9fafb;--radius:10px}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--fg);overflow:hidden;height:100vh;-webkit-font-smoothing:antialiased}
+.slide{display:none;flex-direction:column;justify-content:center;align-items:center;height:100vh;padding:48px 60px;position:relative;overflow:hidden}
+.slide.active{display:flex}
+h1{font-size:3em;font-weight:700;margin-bottom:12px;color:var(--fg);text-align:center;line-height:1.15;letter-spacing:-0.03em}
+h2{font-size:2em;font-weight:700;margin-bottom:28px;color:var(--fg);text-align:center;letter-spacing:-0.02em}
+h3{font-size:0.95em;font-weight:600;color:var(--fg);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em}
+p{font-size:1em;line-height:1.65;color:var(--muted);max-width:900px}
+ul{list-style:none;max-width:900px;width:100%}
+ul li{padding:5px 0 5px 20px;position:relative;font-size:0.92em;line-height:1.6;color:#374151}
+ul li::before{content:'';position:absolute;left:0;top:13px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.sub{font-size:1.15em;color:var(--muted);text-align:center;margin-bottom:8px;font-weight:400}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:32px;max-width:920px;width:100%}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;text-align:left}
+.card h3{margin-bottom:6px}
+.card p,.card li{font-size:0.9em}
+table{border-collapse:collapse;max-width:920px;width:100%;font-size:0.88em}
+th{color:var(--muted);padding:10px 14px;text-align:left;border-bottom:2px solid var(--border);font-weight:600;font-size:0.8em;text-transform:uppercase;letter-spacing:0.05em}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:#374151}
+tr:hover td{background:var(--accent-light)}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:0.8em;font-weight:600}
+.badge-a{background:#dcfce7;color:#166534}
+.badge-b{background:#dbeafe;color:#1e40af}
+.badge-c{background:#fef9c3;color:#854d0e}
+.badge-d{background:#fed7aa;color:#9a3412}
+.badge-f{background:#fecaca;color:#991b1b}
+.nav{position:fixed;bottom:24px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:6px;z-index:100}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .25s}
+.dot.active{background:var(--accent);transform:scale(1.4)}
+.counter{position:fixed;bottom:28px;right:40px;color:var(--muted);font-size:0.8em;font-weight:500;z-index:100}
+.arch-box{border:1.5px solid var(--border);border-radius:8px;padding:12px 18px;text-align:center;font-size:0.85em;color:var(--fg);background:var(--bg);font-weight:500}
+.arch-box.blue{border-color:var(--accent);background:var(--accent-light);color:#1e40af}
+.arch-box.green{border-color:#16a34a;background:#f0fdf4;color:#166534}
+.arch-box.purple{border-color:#7c3aed;background:#f5f3ff;color:#5b21b6}
+.arch-box.orange{border-color:#ea580c;background:#fff7ed;color:#9a3412}
+.arch-box.teal{border-color:#0d9488;background:#f0fdfa;color:#115e59}
+.arrow-h{display:flex;align-items:center;flex-shrink:0;gap:0;width:40px;padding:0 4px}
+.arrow-h .arrow-line{flex:1;height:0;border-top:1.5px solid #b0b8c4}
+.arrow-h .arrow-head{width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid #b0b8c4;flex-shrink:0}
+.arrow-h.bidi{justify-content:center}
+.arrow-h.bidi .arrow-head-left{width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-right:8px solid #b0b8c4;flex-shrink:0}
+.arrow-v{display:flex;flex-direction:column;align-items:center;height:28px;justify-content:center;padding:2px 0}
+.arrow-v .arrow-line{flex:1;width:0;border-left:1.5px solid #b0b8c4}
+.arrow-v .arrow-head{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #b0b8c4;flex-shrink:0}
+.diagram{display:flex;flex-direction:column;align-items:center;gap:0;max-width:920px}
+.diagram-row{display:flex;align-items:center;gap:0;justify-content:center}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;max-width:920px;width:100%}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:920px;width:100%}
+.code-block{background:#1e1e2e;border-radius:var(--radius);padding:18px 22px;font-family:'JetBrains Mono',monospace;font-size:0.78em;color:#cdd6f4;text-align:left;max-width:860px;width:100%;overflow-x:auto;line-height:1.7;white-space:pre}
+.code-block .kw{color:#cba6f7}
+.code-block .str{color:#a6e3a1}
+.code-block .cm{color:#6c7086}
+.code-block .fn{color:#89b4fa}
+.stat-cards{display:flex;gap:16px;margin:16px 0;flex-wrap:wrap;justify-content:center}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px 32px;text-align:center}
+.stat-card .num{font-size:2.2em;font-weight:700;color:var(--accent);letter-spacing:-0.02em}
+.stat-card .label{font-size:0.78em;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:0.05em;font-weight:500}
+.pipeline-step{display:flex;align-items:center;gap:12px;padding:12px 18px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:0.9em}
+.pipeline-step .step-num{background:var(--accent);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:0.8em;flex-shrink:0}
+.pipeline-flow{display:flex;flex-direction:column;gap:6px;max-width:680px;width:100%}
+.content-left{text-align:left;max-width:920px;width:100%}
+strong{color:var(--fg);font-weight:600}
+.accent{color:var(--accent)}
+.slide-enter{animation:fadeIn .35s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.progress-bar{height:6px;border-radius:3px;overflow:hidden;background:#f3f4f6}
+.progress-fill{height:100%;border-radius:3px}
+.tag{display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.78em;font-weight:500;background:var(--accent-light);color:var(--accent)}
+</style>
+</head>
+<body>
+
+<!-- 1. Title -->
+<div class="slide active" id="s1">
+<p class="sub" style="margin-bottom:20px;font-size:0.9em;color:var(--muted)">Instalily Onsite / Hamza Najam</p>
+<h1 style="font-size:3.2em">Roofing Lead<br>Intelligence Platform</h1>
+<p style="text-align:center;margin:16px auto 0;font-size:1.05em">From raw directory data to scored, enriched, actionable sales leads</p>
+<div class="stat-cards" style="margin-top:40px">
+<div class="stat-card"><div class="num">213</div><div class="label">Contractors</div></div>
+<div class="stat-card"><div class="num">3</div><div class="label">AI Models</div></div>
+<div class="stat-card"><div class="num">6</div><div class="label">Scoring Criteria</div></div>
+<div class="stat-card"><div class="num">AI</div><div class="label">Sales Chatbot</div></div>
+</div>
+</div>
+
+<!-- 2. Problem -->
+<div class="slide" id="s2">
+<h2>The Problem</h2>
+<div class="two-col">
+<div class="card" style="border-left:3px solid #ef4444">
+<h3 style="color:#dc2626">Before</h3>
+<ul>
+<li>Reps manually browse GAF contractor directory</li>
+<li>Copy-paste into spreadsheets, one by one</li>
+<li>No way to prioritize who to call first</li>
+<li>Zero intelligence on revenue, size, reputation</li>
+</ul>
+</div>
+<div class="card" style="border-left:3px solid #16a34a">
+<h3 style="color:#16a34a">After</h3>
+<ul>
+<li>One-click pipeline scrapes all contractors by ZIP</li>
+<li>AI enriches with revenue, employees, BBB, news</li>
+<li>GPT-4o scores and ranks every lead 0-100</li>
+<li>Natural language search across the entire database</li>
+</ul>
+</div>
+</div>
+</div>
+
+<!-- 3. Solution Overview -->
+<div class="slide" id="s3">
+<h2>Solution Overview</h2>
+<div style="display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:32px;flex-wrap:wrap">
+<div class="arch-box blue" style="min-width:110px">Scrape</div>
+<div class="arrow-h"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="arch-box green" style="min-width:110px">Enrich</div>
+<div class="arrow-h"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="arch-box purple" style="min-width:110px">Score</div>
+<div class="arrow-h"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="arch-box orange" style="min-width:110px">Search</div>
+<div class="arrow-h"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="arch-box teal" style="min-width:110px">AI Chat</div>
+</div>
+<div class="grid-2" style="max-width:860px">
+<div class="card">
+<h3>ZIP-Code Targeted</h3>
+<p>Enter a zip code, get every GAF-certified contractor in that area, automatically scraped, enriched, and scored.</p>
+</div>
+<div class="card">
+<h3>AI-Powered Scoring</h3>
+<p>GPT-4o evaluates each lead across 6 weighted criteria with RAG context from similar contractors.</p>
+</div>
+<div class="card">
+<h3>Semantic Search</h3>
+<p>Natural language queries powered by Voyage AI embeddings and Pinecone vector similarity.</p>
+</div>
+<div class="card">
+<h3>AI Sales Assistant</h3>
+<p>Conversational chatbot with GPT-4o function calling. Ask questions, compare leads, get insights in natural language.</p>
+</div>
+</div>
+</div>
+
+<!-- 4. Architecture -->
+<div class="slide" id="s4">
+<h2>System Architecture</h2>
+<div class="diagram">
+<div class="diagram-row">
+<div class="arch-box blue" style="width:180px">GAF Website<br><small style="color:#6b7280">Contractor Directory</small></div>
+<div class="arrow-h"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="arch-box green" style="width:180px">Playwright Scraper<br><small style="color:#6b7280">Anti-Detection</small></div>
+<div class="arrow-h"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="arch-box" style="width:180px">SQLite<br><small style="color:#6b7280">213 Records</small></div>
+</div>
+<div class="arrow-v"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="diagram-row">
+<div class="arch-box teal" style="width:180px">Voyage AI<br><small style="color:#6b7280">voyage-3 Embeddings</small></div>
+<div class="arrow-h"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="arch-box purple" style="width:180px">Pinecone<br><small style="color:#6b7280">Vector DB / 1024-dim</small></div>
+</div>
+<div class="arrow-v"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="diagram-row">
+<div class="arch-box orange" style="width:180px">Perplexity Sonar<br><small style="color:#6b7280">Live Web Enrichment</small></div>
+<div class="arrow-h"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="arch-box" style="width:180px">SQLite<br><small style="color:#6b7280">Enriched Data</small></div>
+<div class="arrow-h"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="arch-box purple" style="width:180px">GPT-4o + RAG<br><small style="color:#6b7280">Scoring Engine</small></div>
+</div>
+<div class="arrow-v"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="diagram-row">
+<div class="arch-box blue" style="width:180px">FastAPI<br><small style="color:#6b7280">Async REST API</small></div>
+<div class="arrow-h bidi"><div class="arrow-head-left"></div><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="arch-box green" style="width:180px">Next.js 16<br><small style="color:#6b7280">shadcn/ui + Recharts</small></div>
+</div>
+<div class="arrow-v"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+<div class="diagram-row">
+<div class="arch-box teal" style="width:420px">AI Sales Assistant — GPT-4o Function Calling + SSE Streaming<br><small style="color:#6b7280">4 Tools: search_leads, get_lead_details, compare_leads, get_dashboard_stats</small></div>
+</div>
+</div>
+</div>
+
+<!-- 5. Tech Stack -->
+<div class="slide" id="s5">
+<h2>Tech Stack</h2>
+<table>
+<tr><th>Technology</th><th>Role</th><th>Why</th></tr>
+<tr><td><strong>FastAPI</strong></td><td>Backend</td><td>Async-first, auto-docs, Pydantic validation</td></tr>
+<tr><td><strong>SQLite + aiosqlite</strong></td><td>Database</td><td>Zero-config, portable, async. Perfect for demo scale</td></tr>
+<tr><td><strong>Playwright</strong></td><td>Scraping</td><td>Handles JS-rendered pages, stealth anti-detection</td></tr>
+<tr><td><strong>Perplexity Sonar</strong></td><td>Enrichment</td><td>Live web search. GPT can't browse the internet</td></tr>
+<tr><td><strong>GPT-4o</strong></td><td>Scoring</td><td>Structured JSON output, custom weight support</td></tr>
+<tr><td><strong>Voyage AI</strong></td><td>Embeddings</td><td>1024-dim vectors, query/document input types</td></tr>
+<tr><td><strong>Pinecone</strong></td><td>Vector DB</td><td>Managed serverless, instant cosine similarity search</td></tr>
+<tr><td><strong>Next.js 16 + shadcn/ui</strong></td><td>Frontend</td><td>React 19, modern components, SSR</td></tr>
+<tr><td><strong>GPT-4o Function Calling</strong></td><td>AI Chat</td><td>4 tools query DB + Pinecone on demand, SSE streaming</td></tr>
+<tr><td><strong>TanStack Table + Recharts</strong></td><td>Data</td><td>Headless table logic, interactive charts</td></tr>
+</table>
+</div>
+
+<!-- 6. Scraper -->
+<div class="slide" id="s6">
+<h2>Scraping / Anti-Detection</h2>
+<div class="two-col">
+<div class="card">
+<h3>Challenges</h3>
+<ul>
+<li>GAF uses <strong>Akamai WAF</strong> that blocks automation</li>
+<li>Dynamic JS rendering, no static HTML</li>
+<li>Pagination via hidden next-arrow, not "Load More"</li>
+<li>Star ratings split across multiple DOM lines</li>
+</ul>
+</div>
+<div class="card">
+<h3>Solutions</h3>
+<ul>
+<li><strong>WebDriver removal:</strong> navigator.webdriver set to undefined</li>
+<li><strong>Custom fingerprint:</strong> UA, viewport, timezone, locale</li>
+<li><strong>ZIP-to-URL mapping:</strong> bypasses WAF query blocking</li>
+<li><strong>3-strategy regex:</strong> single-line, multi-line, flexible</li>
+</ul>
+</div>
+</div>
+<div class="code-block" style="margin-top:20px;max-width:760px"><span class="cm">// Anti-detection init script injected before page load</span>
+<span class="fn">Object.defineProperty</span>(navigator, <span class="str">"webdriver"</span>, {<span class="fn">get</span>: () => <span class="kw">undefined</span>})
+
+<span class="cm">// 213 contractors scraped reliably across 22 pages</span></div>
+</div>
+
+<!-- 7. Enrichment -->
+<div class="slide" id="s7">
+<h2>AI Enrichment</h2>
+<p class="sub" style="margin-top:-16px;margin-bottom:24px">Perplexity Sonar: live web research for each contractor</p>
+<div class="two-col">
+<div class="card">
+<h3>Data Gathered</h3>
+<ul>
+<li>Estimated revenue and employee count</li>
+<li>Years in business and specialties</li>
+<li>Online presence score (1-10)</li>
+<li>BBB rating and recent news</li>
+</ul>
+</div>
+<div class="card">
+<h3>Implementation</h3>
+<ul>
+<li>Why not GPT? Perplexity has live web access</li>
+<li>Batch of 3 with 1s delay between calls</li>
+<li>Retry: 2 attempts, 3s backoff</li>
+<li>Graceful fallback, never blocks pipeline</li>
+</ul>
+</div>
+</div>
+</div>
+
+<!-- 8. Scoring -->
+<div class="slide" id="s8">
+<h2>AI Scoring</h2>
+<p class="sub" style="margin-top:-16px;margin-bottom:24px">GPT-4o with RAG context from Pinecone</p>
+<div class="two-col">
+<div>
+<h3>6 Weighted Criteria</h3>
+<div style="margin-top:8px">
+<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:0.88em;margin-bottom:4px"><span>GAF Certification</span><span class="accent" style="font-weight:600">25%</span></div><div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--accent)"></div></div></div>
+<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:0.88em;margin-bottom:4px"><span>Company Size</span><span class="accent" style="font-weight:600">20%</span></div><div class="progress-bar"><div class="progress-fill" style="width:80%;background:#7c3aed"></div></div></div>
+<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:0.88em;margin-bottom:4px"><span>Online Presence</span><span class="accent" style="font-weight:600">15%</span></div><div class="progress-bar"><div class="progress-fill" style="width:60%;background:#16a34a"></div></div></div>
+<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:0.88em;margin-bottom:4px"><span>Proximity</span><span class="accent" style="font-weight:600">10%</span></div><div class="progress-bar"><div class="progress-fill" style="width:40%;background:#ea580c"></div></div></div>
+<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:0.88em;margin-bottom:4px"><span>Years in Business</span><span class="accent" style="font-weight:600">15%</span></div><div class="progress-bar"><div class="progress-fill" style="width:60%;background:#0d9488"></div></div></div>
+<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:0.88em;margin-bottom:4px"><span>Residential Focus</span><span class="accent" style="font-weight:600">15%</span></div><div class="progress-bar"><div class="progress-fill" style="width:60%;background:#db2777"></div></div></div>
+</div>
+</div>
+<div>
+<div class="card" style="margin-bottom:16px">
+<h3>RAG-Enhanced</h3>
+<ul>
+<li>Top 3 similar contractors pulled from Pinecone</li>
+<li>Provides calibration context to GPT-4o</li>
+<li>JSON mode, temperature 0.3</li>
+<li>Outputs: score, grade, rationale, strengths, weaknesses, action, buying signals</li>
+</ul>
+</div>
+<h3>Grade Distribution</h3>
+<div style="display:flex;align-items:flex-end;gap:16px;margin-top:8px;height:110px">
+<div style="text-align:center;flex:1"><div style="background:#16a34a;height:50px;border-radius:6px 6px 0 0"></div><div style="margin-top:6px"><span class="badge badge-a">A</span></div><div style="font-size:0.78em;color:var(--muted);margin-top:2px">53</div></div>
+<div style="text-align:center;flex:1"><div style="background:var(--accent);height:110px;border-radius:6px 6px 0 0"></div><div style="margin-top:6px"><span class="badge badge-b">B</span></div><div style="font-size:0.78em;color:var(--muted);margin-top:2px">147</div></div>
+<div style="text-align:center;flex:1"><div style="background:#ca8a04;height:16px;border-radius:6px 6px 0 0"></div><div style="margin-top:6px"><span class="badge badge-c">C</span></div><div style="font-size:0.78em;color:var(--muted);margin-top:2px">13</div></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 9. Embeddings -->
+<div class="slide" id="s9">
+<h2>Vector Search</h2>
+<p class="sub" style="margin-top:-16px;margin-bottom:24px">Voyage AI embeddings stored in Pinecone for semantic retrieval</p>
+<div class="two-col">
+<div class="card">
+<h3>How It Works</h3>
+<ul>
+<li>Voyage AI (voyage-3) encodes profiles into 1024-dim vectors</li>
+<li>Pinecone Serverless stores vectors with metadata</li>
+<li>Dual embedding: pre-enrichment then post-enrichment</li>
+<li>Separate input types for documents vs. queries</li>
+</ul>
+</div>
+<div class="card">
+<h3>Three Search Modes</h3>
+<ul>
+<li><strong>Semantic:</strong> "large residential roofers with 5-star ratings"</li>
+<li><strong>Similar:</strong> "this lead converted, who else looks like them?"</li>
+<li><strong>RAG:</strong> top-3 similar pulled during scoring for calibration</li>
+</ul>
+</div>
+</div>
+<div class="code-block" style="margin-top:20px"><span class="cm">// Text representation for embedding</span>
+<span class="str">"Company: Brothers Aluminum | Cert: GAF Master Elite | Location: Valley Stream, NY
+ Rating: 4.9 (156 reviews) | Revenue: $5M-10M | Employees: 25-50"</span>
+
+<span class="cm">// Voyage AI  →  [0.023, -0.187, 0.445, ...]  →  Pinecone upsert</span></div>
+</div>
+
+<!-- 10. Pipeline -->
+<div class="slide" id="s10">
+<h2>Pipeline Orchestration</h2>
+<div class="pipeline-flow">
+<div class="pipeline-step"><div class="step-num">1</div><div><strong>Scrape:</strong> Playwright crawls GAF by ZIP, upserts to SQLite</div></div>
+<div class="pipeline-step"><div class="step-num">2</div><div><strong>Embed:</strong> Voyage AI encodes basic profiles into Pinecone</div></div>
+<div class="pipeline-step"><div class="step-num">3</div><div><strong>Enrich:</strong> Perplexity Sonar researches each contractor</div></div>
+<div class="pipeline-step"><div class="step-num">4</div><div><strong>Score:</strong> GPT-4o + RAG scores each lead</div></div>
+<div class="pipeline-step"><div class="step-num">5</div><div><strong>Re-Embed:</strong> Re-encode with enriched data, update Pinecone</div></div>
+</div>
+<div class="grid-3" style="margin-top:20px">
+<div class="card">
+<h3>Upsert Logic</h3>
+<p>Re-runs update existing records. Enrichment and scoring data preserved across runs.</p>
+</div>
+<div class="card">
+<h3>Skip Processed</h3>
+<p>Checks enriched_at and scored_at timestamps. Only processes new contractors.</p>
+</div>
+<div class="card">
+<h3>Resilience</h3>
+<p>2 retry attempts with 3s delay. Failures counted but never block the pipeline.</p>
+</div>
+</div>
+</div>
+
+<!-- 11. Dashboard -->
+<div class="slide" id="s11">
+<h2>Dashboard</h2>
+<div class="content-left">
+<div class="stat-cards">
+<div class="stat-card"><div class="num">213</div><div class="label">Total Leads</div></div>
+<div class="stat-card"><div class="num">74.3</div><div class="label">Avg Score</div></div>
+<div class="stat-card"><div class="num">53</div><div class="label">Hot Leads</div></div>
+<div class="stat-card"><div class="num">100%</div><div class="label">Enriched</div></div>
+</div>
+<div class="grid-2" style="margin-top:16px">
+<div class="card">
+<h3>Grade Distribution</h3>
+<div style="display:flex;align-items:flex-end;gap:12px;margin-top:12px;height:120px">
+<div style="text-align:center;flex:1"><div style="background:#16a34a;height:43px;border-radius:4px 4px 0 0"></div><div style="font-size:0.78em;color:var(--muted);margin-top:4px">A: 53</div></div>
+<div style="text-align:center;flex:1"><div style="background:var(--accent);height:120px;border-radius:4px 4px 0 0"></div><div style="font-size:0.78em;color:var(--muted);margin-top:4px">B: 147</div></div>
+<div style="text-align:center;flex:1"><div style="background:#ca8a04;height:18px;border-radius:4px 4px 0 0"></div><div style="font-size:0.78em;color:var(--muted);margin-top:4px">C: 13</div></div>
+<div style="text-align:center;flex:1"><div style="background:#d1d5db;height:4px;border-radius:2px 2px 0 0"></div><div style="font-size:0.78em;color:var(--muted);margin-top:4px">D/F: 0</div></div>
+</div>
+</div>
+<div class="card">
+<h3>Certifications</h3>
+<div style="margin-top:12px">
+<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:4px"><span>GAF Certified</span><span style="color:var(--muted)">140 (65.7%)</span></div><div class="progress-bar"><div class="progress-fill" style="width:65.7%;background:var(--accent)"></div></div></div>
+<div><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:4px"><span>Master Elite</span><span style="color:var(--muted)">73 (34.3%)</span></div><div class="progress-bar"><div class="progress-fill" style="width:34.3%;background:#f59e0b"></div></div></div>
+</div>
+</div>
+</div>
+<div class="card" style="margin-top:16px">
+<h3>Pipeline Control</h3>
+<p>ZIP code input triggers the full pipeline. Real-time status polling every 2s with progress messages in the UI.</p>
+</div>
+</div>
+</div>
+
+<!-- 12. Leads Table -->
+<div class="slide" id="s12">
+<h2>Leads Table</h2>
+<div class="content-left">
+<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;max-width:920px">
+<table style="margin:0">
+<tr><th>Score</th><th>Company</th><th>Certification</th><th>Location</th><th>Rating</th><th>Reviews</th></tr>
+<tr><td><span class="badge badge-a">A 92</span></td><td>Brothers Aluminum Home Imp.</td><td>Master Elite</td><td>Valley Stream, NY</td><td>4.9</td><td>156</td></tr>
+<tr><td><span class="badge badge-a">A 87</span></td><td>Preferred Exterior Corp</td><td>Master Elite</td><td>New Hyde Park, NY</td><td>4.8</td><td>203</td></tr>
+<tr><td><span class="badge badge-b">B 76</span></td><td>Royal Renovators Inc</td><td>Certified</td><td>Queens, NY</td><td>4.7</td><td>89</td></tr>
+<tr><td><span class="badge badge-b">B 68</span></td><td>Metro Roofing Solutions</td><td>Certified</td><td>Brooklyn, NY</td><td>4.5</td><td>42</td></tr>
+<tr><td><span class="badge badge-c">C 52</span></td><td>Quick Fix Roofing LLC</td><td>Certified</td><td>Newark, NJ</td><td>4.0</td><td>12</td></tr>
+</table>
+</div>
+<div class="grid-3" style="margin-top:16px">
+<div class="card">
+<h3>Sortable</h3>
+<p>Click any column header to sort by score, name, certification, location, rating, or distance.</p>
+</div>
+<div class="card">
+<h3>Smart Search</h3>
+<p>Text filter plus AI semantic search toggle for natural language queries via Pinecone.</p>
+</div>
+<div class="card">
+<h3>Paginated</h3>
+<p>Direct page jumping with certification and minimum score filters.</p>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 13. Lead Detail -->
+<div class="slide" id="s13">
+<h2>Lead Detail</h2>
+<div class="content-left">
+<div class="two-col">
+<div class="card">
+<h3>Score Analysis</h3>
+<div style="display:flex;align-items:center;gap:16px;margin:12px 0">
+<div style="width:56px;height:56px;border-radius:50%;background:#dcfce7;border:2.5px solid #16a34a;display:flex;align-items:center;justify-content:center;font-size:1.4em;font-weight:700;color:#166534">A</div>
+<div><div style="font-size:1.8em;font-weight:700">87<span style="font-size:0.45em;color:var(--muted);font-weight:500">/100</span></div></div>
+</div>
+<p style="font-size:0.88em"><strong>Rationale:</strong> GAF Master Elite certification, excellent reviews, long-standing market presence.</p>
+<p style="font-size:0.88em;margin-top:6px"><strong>Strengths:</strong> 43 years in business, A+ BBB, diverse specialties</p>
+<p style="font-size:0.88em;margin-top:4px"><strong>Weaknesses:</strong> Moderate online presence (6/10)</p>
+</div>
+<div class="card">
+<h3>Company Intelligence</h3>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;font-size:0.88em">
+<div style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px"><span style="color:var(--muted)">Revenue</span><br><strong>$5M-10M</strong></div>
+<div style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px"><span style="color:var(--muted)">Employees</span><br><strong>25-50</strong></div>
+<div style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px"><span style="color:var(--muted)">Years</span><br><strong>43</strong></div>
+<div style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px"><span style="color:var(--muted)">BBB</span><br><strong>A+</strong></div>
+</div>
+<p style="font-size:0.88em;margin-top:12px"><strong>Action:</strong> Schedule introductory call. High-value prospect</p>
+<p style="font-size:0.88em;margin-top:4px"><strong>Signals:</strong> Growing business, expanding service area</p>
+</div>
+</div>
+<div class="grid-3" style="margin-top:14px">
+<div class="card"><h3>Similar Leads</h3><p style="font-size:0.85em">Vector search finds contractors with similar profiles</p></div>
+<div class="card"><h3>Re-Enrich</h3><p style="font-size:0.85em">Refresh intelligence before a sales call</p></div>
+<div class="card"><h3>Re-Score</h3><p style="font-size:0.85em">Re-evaluate with latest data or updated weights</p></div>
+</div>
+</div>
+</div>
+
+<!-- 14. Scoring Criteria -->
+<div class="slide" id="s14">
+<h2>Scoring Configuration</h2>
+<div class="two-col">
+<div class="card">
+<h3>Weight Sliders</h3>
+<div style="margin-top:8px;font-size:0.88em">
+<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>GAF Certification</span><span class="accent" style="font-weight:600">25%</span></div><div class="progress-bar"><div class="progress-fill" style="width:50%;background:var(--accent)"></div></div></div>
+<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Company Size</span><span class="accent" style="font-weight:600">20%</span></div><div class="progress-bar"><div class="progress-fill" style="width:40%;background:#7c3aed"></div></div></div>
+<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Online Presence</span><span class="accent" style="font-weight:600">15%</span></div><div class="progress-bar"><div class="progress-fill" style="width:30%;background:#16a34a"></div></div></div>
+<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Proximity</span><span class="accent" style="font-weight:600">10%</span></div><div class="progress-bar"><div class="progress-fill" style="width:20%;background:#ea580c"></div></div></div>
+<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Years in Business</span><span class="accent" style="font-weight:600">15%</span></div><div class="progress-bar"><div class="progress-fill" style="width:30%;background:#0d9488"></div></div></div>
+<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Residential Focus</span><span class="accent" style="font-weight:600">15%</span></div><div class="progress-bar"><div class="progress-fill" style="width:30%;background:#db2777"></div></div></div>
+</div>
+<div style="text-align:center;margin-top:10px;padding:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;color:#166534;font-weight:600;font-size:0.88em">Total: 100%</div>
+</div>
+<div>
+<div class="card" style="margin-bottom:14px">
+<h3>Grade Scale</h3>
+<div style="margin-top:8px;font-size:0.88em">
+<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><span class="badge badge-a" style="width:32px;text-align:center">A</span> 80-100: Hot lead</div>
+<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><span class="badge badge-b" style="width:32px;text-align:center">B</span> 60-79: Warm lead</div>
+<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><span class="badge badge-c" style="width:32px;text-align:center">C</span> 40-59: Neutral</div>
+<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><span class="badge badge-d" style="width:32px;text-align:center">D</span> 20-39: Low priority</div>
+<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><span class="badge badge-f" style="width:32px;text-align:center">F</span> 0-19: Not qualified</div>
+</div>
+</div>
+<div class="card">
+<h3>Re-Score All</h3>
+<p>One button re-scores the entire database with updated weights. No re-scraping or re-enriching needed.</p>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 15. AI Sales Assistant -->
+<div class="slide" id="s15">
+<h2>AI Sales Assistant</h2>
+<p class="sub" style="margin-top:-16px;margin-bottom:24px">Conversational AI with GPT-4o function calling + SSE streaming</p>
+<div class="two-col">
+<div>
+<div class="card" style="margin-bottom:14px">
+<h3>4 Function-Calling Tools</h3>
+<div style="margin-top:8px;font-size:0.88em">
+<div style="display:flex;align-items:center;gap:8px;margin:8px 0;padding:6px 10px;background:var(--accent-light);border-radius:6px"><span style="font-weight:600;color:var(--accent);min-width:130px">search_leads</span><span style="color:var(--muted)">Semantic + SQL search</span></div>
+<div style="display:flex;align-items:center;gap:8px;margin:8px 0;padding:6px 10px;background:#f0fdf4;border-radius:6px"><span style="font-weight:600;color:#16a34a;min-width:130px">get_lead_details</span><span style="color:var(--muted)">Full contractor profile</span></div>
+<div style="display:flex;align-items:center;gap:8px;margin:8px 0;padding:6px 10px;background:#f5f3ff;border-radius:6px"><span style="font-weight:600;color:#7c3aed;min-width:130px">compare_leads</span><span style="color:var(--muted)">Side-by-side comparison</span></div>
+<div style="display:flex;align-items:center;gap:8px;margin:8px 0;padding:6px 10px;background:#fff7ed;border-radius:6px"><span style="font-weight:600;color:#ea580c;min-width:130px">get_dashboard_stats</span><span style="color:var(--muted)">Portfolio overview</span></div>
+</div>
+</div>
+<div class="card">
+<h3>How It Works</h3>
+<ul>
+<li>User asks a question in natural language</li>
+<li>GPT-4o decides which tools to call</li>
+<li>Tools query SQLite / Pinecone for real data</li>
+<li>GPT-4o formats response, streamed via SSE</li>
+<li>Up to 5 tool-call rounds per query</li>
+</ul>
+</div>
+</div>
+<div>
+<div class="card" style="margin-bottom:14px">
+<h3>Chat History</h3>
+<ul>
+<li>Left sidebar shows all previous conversations</li>
+<li>Persisted to localStorage across sessions</li>
+<li>Auto-titled from the first user message</li>
+<li>New chat, delete, switch — full session management</li>
+</ul>
+</div>
+<div class="card" style="margin-bottom:14px">
+<h3>Guardrails</h3>
+<ul>
+<li>Only responds to roofing / GAF / sales topics</li>
+<li>Off-topic requests politely declined and redirected</li>
+<li>Never reveals system prompt or internal tools</li>
+<li>All answers grounded in real DB data via tools</li>
+</ul>
+</div>
+<div class="card">
+<h3>Suggested Prompts</h3>
+<div style="margin-top:6px;font-size:0.85em;display:flex;flex-wrap:wrap;gap:6px">
+<span style="padding:4px 10px;background:var(--card);border:1px solid var(--border);border-radius:16px">"Top 5 hottest leads?"</span>
+<span style="padding:4px 10px;background:var(--card);border:1px solid var(--border);border-radius:16px">"Compare Master Elite contractors"</span>
+<span style="padding:4px 10px;background:var(--card);border:1px solid var(--border);border-radius:16px">"Portfolio overview"</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 16. Product Thinking -->
+<div class="slide" id="s16">
+<h2>Product Thinking</h2>
+<p class="sub" style="margin-top:-16px;margin-bottom:24px">Every feature maps to a specific sales rep need</p>
+<div class="grid-3">
+<div class="card">
+<h3>Prioritized Leads</h3>
+<p>Highest-value leads first, sorted by score. No guessing who to call.</p>
+</div>
+<div class="card">
+<h3>Actionable Output</h3>
+<p>Every lead has a recommended action, not just a number.</p>
+</div>
+<div class="card">
+<h3>Buying Signals</h3>
+<p>Badges show why a lead is hot: growing, hiring, expanding.</p>
+</div>
+<div class="card">
+<h3>Territory Targeting</h3>
+<p>ZIP code input for geographic focus per sales rep.</p>
+</div>
+<div class="card">
+<h3>Explainable Scores</h3>
+<p>Rationale, strengths, weaknesses. Reps trust what they understand.</p>
+</div>
+<div class="card">
+<h3>AI Sales Assistant</h3>
+<p>Ask questions in natural language. The chatbot queries real data and gives actionable answers.</p>
+</div>
+</div>
+</div>
+
+<!-- 17. Challenges -->
+<div class="slide" id="s17">
+<h2>Challenges Navigated</h2>
+<div class="grid-2" style="max-width:900px">
+<div class="card">
+<h3>WAF Blocking</h3>
+<p>Akamai blocked query params. Solved with ZIP-to-URL mapping and stealth browser settings.</p>
+</div>
+<div class="card">
+<h3>Inconsistent HTML</h3>
+<p>GAF DOM varies per page. Built 3-strategy regex parsing with fallbacks.</p>
+</div>
+<div class="card">
+<h3>Junk Records</h3>
+<p>Certification badges scraped as contractors. Added validation filter for known junk patterns.</p>
+</div>
+<div class="card">
+<h3>Re-run Data Loss</h3>
+<p>DELETE + INSERT wiped enrichment. Changed to upsert logic preserving existing data.</p>
+</div>
+<div class="card">
+<h3>Hydration Mismatch</h3>
+<p>tw-animate-css caused React errors. Fixed with suppressHydrationWarning.</p>
+</div>
+<div class="card">
+<h3>Rate Limits</h3>
+<p>API throttling across 3 providers. 1s delays, batch processing, 2-attempt retry with backoff.</p>
+</div>
+</div>
+</div>
+
+<!-- 18. Scalability -->
+<div class="slide" id="s18">
+<h2>Scaling Up</h2>
+<div class="grid-2" style="max-width:900px">
+<div class="card">
+<h3>Database</h3>
+<p>SQLite to PostgreSQL for concurrent writes and production reliability.</p>
+</div>
+<div class="card">
+<h3>Task Queue</h3>
+<p>BackgroundTasks to Celery + Redis for distributed pipeline execution.</p>
+</div>
+<div class="card">
+<h3>Caching</h3>
+<p>Redis for dashboard stats and frequent queries. Sub-millisecond response.</p>
+</div>
+<div class="card">
+<h3>CRM Integration</h3>
+<p>Salesforce/HubSpot push for scored leads. Direct pipeline to sales workflow.</p>
+</div>
+<div class="card">
+<h3>Auth + Roles</h3>
+<p>User authentication with rep vs. manager permissions.</p>
+</div>
+<div class="card">
+<h3>Feedback Loop</h3>
+<p>Collect rep feedback on lead quality. Fine-tune scoring model over time.</p>
+</div>
+</div>
+</div>
+
+<!-- 19. End -->
+<div class="slide" id="s19">
+<h1>Questions?</h1>
+<div class="stat-cards" style="margin:36px 0">
+<div class="stat-card"><div class="num">213</div><div class="label">Leads</div></div>
+<div class="stat-card"><div class="num">3</div><div class="label">AI Providers</div></div>
+<div class="stat-card"><div class="num">4</div><div class="label">Chat Tools</div></div>
+<div class="stat-card"><div class="num">19</div><div class="label">Endpoints</div></div>
+</div>
+<div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin:16px 0">
+<span class="tag">GPT-4o</span>
+<span class="tag">Perplexity Sonar</span>
+<span class="tag">Voyage AI</span>
+<span class="tag">FastAPI</span>
+<span class="tag">Next.js 16</span>
+<span class="tag">Pinecone</span>
+<span class="tag">Playwright</span>
+<span class="tag">SSE Streaming</span>
+<span class="tag">shadcn/ui</span>
+</div>
+<p style="text-align:center;margin-top:32px;color:var(--muted);font-size:0.95em">Hamza Najam</p>
+</div>
+
+<!-- Navigation -->
+<div class="nav" id="nav"></div>
+<div class="counter" id="counter"></div>
+
+<script>
+const slides=document.querySelectorAll('.slide');
+const nav=document.getElementById('nav');
+const counter=document.getElementById('counter');
+let current=0;
+const total=slides.length;
+
+for(let i=0;i<total;i++){
+  const d=document.createElement('div');
+  d.className='dot'+(i===0?' active':'');
+  d.onclick=()=>goTo(i);
+  nav.appendChild(d);
+}
+
+function goTo(n){
+  if(n<0||n>=total)return;
+  slides[current].classList.remove('active');
+  nav.children[current].classList.remove('active');
+  current=n;
+  slides[current].classList.add('active');
+  slides[current].classList.remove('slide-enter');
+  void slides[current].offsetWidth;
+  slides[current].classList.add('slide-enter');
+  nav.children[current].classList.add('active');
+  counter.textContent=(current+1)+' / '+total;
+}
+
+function next(){goTo(current+1)}
+function prev(){goTo(current-1)}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' ')next();
+  else if(e.key==='ArrowLeft')prev();
+  else if(e.key==='Home')goTo(0);
+  else if(e.key==='End')goTo(total-1);
+});
+
+let touchX=0;
+document.addEventListener('touchstart',e=>{touchX=e.touches[0].clientX});
+document.addEventListener('touchend',e=>{
+  const diff=e.changedTouches[0].clientX-touchX;
+  if(Math.abs(diff)>50){diff<0?next():prev()}
+});
+
+counter.textContent='1 / '+total;
+</script>
+</body>
+</html>

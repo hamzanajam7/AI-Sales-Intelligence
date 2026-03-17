@@ -73,6 +73,87 @@ export async function scoreContractor(id: number): Promise<{ status: string; sco
   return fetchAPI<{ status: string; score: number }>(`/api/contractors/${id}/score`, { method: "POST" });
 }
 
+export function getExportUrl(params: {
+  sort_by?: string;
+  sort_order?: string;
+  certification?: string;
+  min_score?: number;
+  search?: string;
+}): string {
+  const searchParams = new URLSearchParams();
+  if (params.sort_by) searchParams.set("sort_by", params.sort_by);
+  if (params.sort_order) searchParams.set("sort_order", params.sort_order);
+  if (params.certification) searchParams.set("certification", params.certification);
+  if (params.min_score !== undefined) searchParams.set("min_score", String(params.min_score));
+  if (params.search) searchParams.set("search", params.search);
+  return `${API_URL}/api/contractors/export?${searchParams}`;
+}
+
+export async function streamChat(
+  messages: { role: string; content: string }[],
+  onDelta: (content: string) => void,
+  onToolCall: (label: string) => void,
+  onDone: () => void,
+  onError: (error: string) => void,
+): Promise<void> {
+  try {
+    const res = await fetch(`${API_URL}/api/chat/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages }),
+    });
+
+    if (!res.ok) {
+      onError(`API error: ${res.status}`);
+      return;
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) {
+      onError("No response body");
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      let eventType = "";
+      for (const line of lines) {
+        if (line.startsWith("event: ")) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith("data: ")) {
+          const data = line.slice(6);
+          try {
+            const parsed = JSON.parse(data);
+            if (eventType === "delta" && parsed.content) {
+              onDelta(parsed.content);
+            } else if (eventType === "tool_call" && parsed.label) {
+              onToolCall(parsed.label);
+            } else if (eventType === "done") {
+              onDone();
+              return;
+            }
+          } catch {
+            // skip malformed JSON
+          }
+        }
+      }
+    }
+
+    onDone();
+  } catch (err) {
+    onError(err instanceof Error ? err.message : "Stream failed");
+  }
+}
+
 export async function rescoreWithWeights(weights: Record<string, number>): Promise<{ message: string }> {
   return fetchAPI<{ message: string }>("/api/scraping/rescore", {
     method: "POST",
