@@ -11,6 +11,16 @@ def get_openai_client() -> AsyncOpenAI:
     return AsyncOpenAI(api_key=settings.openai_api_key)
 
 
+DEFAULT_WEIGHTS = {
+    "certification": 25,
+    "company_size": 20,
+    "online_presence": 15,
+    "geographic_proximity": 10,
+    "years_in_business": 15,
+    "residential_focus": 15,
+}
+
+
 async def score_contractor(
     company_name: str,
     certification_level: str = None,
@@ -24,9 +34,11 @@ async def score_contractor(
     online_presence_score: int = None,
     bbb_rating: str = None,
     specialties: list[str] = None,
+    weights: dict = None,
 ) -> ScoringData:
     """Score a contractor lead using GPT-4o with RAG context from Pinecone."""
     client = get_openai_client()
+    w = weights or DEFAULT_WEIGHTS
 
     # Get RAG context from similar contractors in Pinecone
     rag_context = ""
@@ -65,12 +77,12 @@ CONTRACTOR PROFILE:
 {rag_section}
 
 SCORING CRITERIA (weight in parentheses):
-- GAF Certification Level (25%): Master Elite > President's Club > Triple Excellence > Certified > None
-- Company Size & Revenue (20%): Larger companies = more materials purchased
-- Online Presence & Reviews (15%): Strong presence = established business, good reputation
-- Geographic Proximity (10%): Closer to distribution center = lower logistics cost
-- Years in Business (15%): More established = more reliable partner
-- Residential Roofing Focus (15%): Alignment with GAF's residential products
+- GAF Certification Level ({w['certification']}%): Master Elite > President's Club > Triple Excellence > Certified > None
+- Company Size & Revenue ({w['company_size']}%): Larger companies = more materials purchased
+- Online Presence & Reviews ({w['online_presence']}%): Strong presence = established business, good reputation
+- Geographic Proximity ({w['geographic_proximity']}%): Closer to distribution center = lower logistics cost
+- Years in Business ({w['years_in_business']}%): More established = more reliable partner
+- Residential Roofing Focus ({w['residential_focus']}%): Alignment with GAF's residential products
 
 Return your analysis as JSON:
 {{

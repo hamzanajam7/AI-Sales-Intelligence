@@ -72,3 +72,10 @@ export async function enrichContractor(id: number): Promise<{ status: string }> 
 export async function scoreContractor(id: number): Promise<{ status: string; score: number }> {
   return fetchAPI<{ status: string; score: number }>(`/api/contractors/${id}/score`, { method: "POST" });
 }
+
+export async function rescoreWithWeights(weights: Record<string, number>): Promise<{ message: string }> {
+  return fetchAPI<{ message: string }>("/api/scraping/rescore", {
+    method: "POST",
+    body: JSON.stringify(weights),
+  });
+}

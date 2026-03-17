@@ -264,3 +264,82 @@ async def run_full_pipeline(zip_code: str = "10013"):
     except Exception as e:
         pipeline_status = PipelineStatus(status="error", error=str(e))
         raise
+
+
+async def rescore_all_contractors(weights: dict):
+    """Re-score all contractors with custom weights without re-scraping or re-enriching."""
+    global pipeline_status
+
+    try:
+        pipeline_status = PipelineStatus(status="scoring", progress="Loading contractors...")
+
+        async with async_session() as session:
+            result = await session.execute(select(Contractor))
+            all_contractors = result.scalars().all()
+
+        if not all_contractors:
+            pipeline_status = PipelineStatus(status="error", error="No contractors found")
+            return
+
+        total_failed = 0
+        scored = 0
+
+        for c in all_contractors:
+            pipeline_status.progress = f"Re-scoring {scored + 1}/{len(all_contractors)}: {c.company_name}"
+            try:
+                async with async_session() as session:
+                    db_c = await session.get(Contractor, c.id)
+                    if not db_c:
+                        continue
+                    specialties = []
+                    if db_c.specialties:
+                        try:
+                            specialties = json.loads(db_c.specialties)
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+
+                    score_data = await score_contractor(
+                        company_name=db_c.company_name,
+                        certification_level=db_c.certification_level,
+                        star_rating=db_c.star_rating,
+                        review_count=db_c.review_count,
+                        distance_miles=db_c.distance_miles,
+                        enrichment_summary=db_c.enrichment_summary,
+                        estimated_revenue=db_c.estimated_revenue,
+                        employee_count=db_c.employee_count,
+                        years_in_business=db_c.years_in_business,
+                        online_presence_score=db_c.online_presence_score,
+                        bbb_rating=db_c.bbb_rating,
+                        specialties=specialties,
+                        weights=weights,
+                    )
+
+                    db_c.lead_score = score_data.lead_score
+                    db_c.lead_grade = score_data.lead_grade
+                    db_c.score_rationale = score_data.rationale
+                    db_c.score_strengths = json.dumps(score_data.strengths)
+                    db_c.score_weaknesses = json.dumps(score_data.weaknesses)
+                    db_c.recommended_action = score_data.recommended_action
+                    db_c.buying_signals = json.dumps(score_data.buying_signals)
+                    db_c.scored_at = datetime.utcnow()
+                    await session.commit()
+
+                scored += 1
+                pipeline_status.total_scored = scored
+            except Exception as e:
+                total_failed += 1
+                pipeline_status.total_failed = total_failed
+                print(f"Re-scoring failed for {c.company_name}: {e}")
+
+        pipeline_status = PipelineStatus(
+            status="complete",
+            progress=f"Re-scoring complete! {scored}/{len(all_contractors)} updated",
+            total_scraped=len(all_contractors),
+            total_enriched=len(all_contractors),
+            total_scored=scored,
+            total_failed=total_failed,
+        )
+
+    except Exception as e:
+        pipeline_status = PipelineStatus(status="error", error=str(e))
+        raise
