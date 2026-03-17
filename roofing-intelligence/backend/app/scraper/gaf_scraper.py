@@ -16,7 +16,6 @@ ZIP_TO_URL = {
 }
 DEFAULT_URL = "https://www.gaf.com/en-us/roofing-contractors/residential/usa/ny/new-york"
 
-
 async def scrape_gaf_contractors(zip_code: str = "10013", max_results: int = 50) -> list[dict]:
     """Scrape GAF roofing contractor directory using Playwright with stealth settings."""
     url = ZIP_TO_URL.get(zip_code, DEFAULT_URL)
@@ -78,7 +77,7 @@ async def scrape_gaf_contractors(zip_code: str = "10013", max_results: int = 50)
                 except Exception:
                     pass
 
-            # Scrape from article elements (confirmed working selector)
+            # Scrape from article elements
             contractors = await _scrape_articles(page, max_results)
 
         except Exception as e:
