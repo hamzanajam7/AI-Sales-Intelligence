@@ -90,10 +90,11 @@ async def scrape_gaf_contractors(zip_code: str = "10013", max_results: int = 50)
 
 
 async def _scrape_articles(page: Page, max_results: int) -> list[dict]:
-    """Scrape contractor data from article elements on the GAF page."""
+    """Scrape contractor data from article elements across all GAF pagination pages."""
     contractors = []
+    seen_names = set()
 
-    # Debug: dump raw text of first 2 articles before pagination
+    # Debug: dump raw text of first 2 articles on page 1
     debug_articles = await page.query_selector_all("article")
     for i, art in enumerate(debug_articles[:2]):
         try:
@@ -102,90 +103,65 @@ async def _scrape_articles(page: Page, max_results: int) -> list[dict]:
         except Exception:
             pass
 
-    # Load more results: scroll + click strategy with article count monitoring
-    prev_count = len(debug_articles)
-    stable_rounds = 0
+    # Scrape current page, then click through pagination pages
+    page_num = 1
+    while len(contractors) < max_results:
+        # Parse all articles on current page
+        articles = await page.query_selector_all("article")
+        print(f"Page {page_num}: found {len(articles)} articles")
 
-    for attempt in range(30):
-        # Scroll to bottom to trigger lazy loading
-        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        await asyncio.sleep(2)
-
-        # Try clicking pagination / load more buttons
-        clicked = False
-        for selector in [
-            "button:has-text('Show More')",
-            "button:has-text('Load More')",
-            "a:has-text('Show More')",
-            "a:has-text('Load More')",
-            "button:has-text('Next')",
-            "a:has-text('Next')",
-            "[class*='pagination'] button",
-            "[class*='load-more']",
-            "[data-testid*='load-more']",
-            "button[class*='more']",
-        ]:
-            try:
-                btn = page.locator(selector).first
-                if await btn.is_visible(timeout=1000):
-                    await btn.click()
-                    await asyncio.sleep(3)
-                    clicked = True
-                    print(f"Clicked pagination: {selector} (attempt {attempt + 1})")
-                    break
-            except Exception:
-                continue
-
-        # Check article count
-        current_articles = await page.query_selector_all("article")
-        current_count = len(current_articles)
-        print(f"Pagination attempt {attempt + 1}: {current_count} articles (prev: {prev_count})")
-
-        if current_count == prev_count:
-            stable_rounds += 1
-            if stable_rounds >= 3:
-                print(f"Article count stable for 3 rounds, stopping pagination")
+        for article in articles:
+            if len(contractors) >= max_results:
                 break
-        else:
-            stable_rounds = 0
-            prev_count = current_count
+            try:
+                text = await article.inner_text()
+                if not text or len(text.strip()) < 10:
+                    continue
 
-        if current_count >= max_results:
-            print(f"Reached max_results ({max_results}), stopping pagination")
-            break
+                contractor = _parse_article_text(text)
 
-        if not clicked:
-            # If we couldn't click anything and count didn't change, scroll more aggressively
-            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            await asyncio.sleep(2)
+                # Get profile link from the article
+                try:
+                    link_el = await article.query_selector("a[href*='/roofing-contractors/']")
+                    if link_el:
+                        href = await link_el.get_attribute("href")
+                        if href:
+                            contractor["gaf_profile_url"] = href
+                except Exception:
+                    pass
 
-    # GAF uses <article> elements for each contractor card
-    articles = await page.query_selector_all("article")
-    print(f"Found {len(articles)} article elements")
-
-    for article in articles[:max_results]:
-        try:
-            text = await article.inner_text()
-            if not text or len(text.strip()) < 10:
+                name = contractor.get("company_name", "").lower().strip()
+                if name and name not in seen_names and _is_valid_contractor(contractor):
+                    seen_names.add(name)
+                    contractors.append(contractor)
+            except Exception as e:
+                print(f"Error parsing article: {e}")
                 continue
 
-            contractor = _parse_article_text(text)
+        print(f"After page {page_num}: {len(contractors)} valid contractors total")
 
-            # Get profile link from the article
-            try:
-                link_el = await article.query_selector("a[href*='/roofing-contractors/']")
-                if link_el:
-                    href = await link_el.get_attribute("href")
-                    if href:
-                        contractor["gaf_profile_url"] = href
-            except Exception:
-                pass
-
-            if contractor.get("company_name") and _is_valid_contractor(contractor):
-                contractors.append(contractor)
+        # Click the "Next Page" arrow to go to the next page
+        next_arrow = page.locator("button.pagination__next")
+        try:
+            is_disabled = await next_arrow.get_attribute("disabled")
+            if is_disabled is not None:
+                print("Next arrow is disabled, pagination complete")
+                break
+            if await next_arrow.is_visible(timeout=2000):
+                await next_arrow.click()
+                await asyncio.sleep(3)
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass
+                await asyncio.sleep(1)
+                page_num += 1
+            else:
+                print("Next arrow not visible, pagination complete")
+                break
         except Exception as e:
-            print(f"Error parsing article: {e}")
-            continue
+            print(f"Pagination click failed: {e}")
+            break
 
     return contractors
 
