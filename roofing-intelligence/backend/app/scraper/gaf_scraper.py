@@ -16,7 +16,7 @@ ZIP_TO_URL = {
 }
 DEFAULT_URL = "https://www.gaf.com/en-us/roofing-contractors/residential/usa/ny/new-york"
 
-async def scrape_gaf_contractors(zip_code: str = "10013", max_results: int = 50) -> list[dict]:
+async def scrape_gaf_contractors(zip_code: str = "10013", max_results: int = 500) -> list[dict]:
     """Scrape GAF roofing contractor directory using Playwright with stealth settings."""
     url = ZIP_TO_URL.get(zip_code, DEFAULT_URL)
     contractors = []
