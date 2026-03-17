@@ -306,19 +306,29 @@ def _parse_article_text(text: str) -> dict:
 
 
 async def save_contractors_to_db(contractors: list[dict]) -> int:
-    """Save scraped contractors to SQLite. Returns count of new records."""
+    """Save scraped contractors to SQLite via upsert. Returns count of new records.
+
+    Existing contractors (matched by company_name) get their scraped fields
+    updated while preserving enrichment/scoring data from prior runs.
+    """
     saved = 0
     async with async_session() as session:
         for data in contractors:
-            existing = await session.execute(
+            result = await session.execute(
                 select(Contractor).where(Contractor.company_name == data["company_name"])
             )
-            if existing.scalar_one_or_none():
-                continue
-
-            contractor = Contractor(**data)
-            session.add(contractor)
-            saved += 1
+            existing = result.scalar_one_or_none()
+            if existing:
+                # Update scraped fields on existing record, preserve enrichment/scoring
+                for key in ("certification_level", "address_full", "city", "state",
+                            "phone", "star_rating", "review_count", "distance_miles",
+                            "gaf_profile_url"):
+                    if data.get(key) is not None:
+                        setattr(existing, key, data[key])
+            else:
+                contractor = Contractor(**data)
+                session.add(contractor)
+                saved += 1
 
         await session.commit()
     return saved

@@ -77,10 +77,6 @@ async def run_full_pipeline(zip_code: str = "10013"):
     global pipeline_status
 
     try:
-        # Step 0: Reset DB + Pinecone for clean run
-        pipeline_status = PipelineStatus(status="resetting", progress="Clearing old data...")
-        await reset_data()
-
         # Step 1: Scrape
         pipeline_status = PipelineStatus(status="scraping", progress="Scraping GAF contractors...")
         contractors_data = await scrape_gaf_contractors(zip_code)
@@ -123,10 +119,15 @@ async def run_full_pipeline(zip_code: str = "10013"):
         except Exception as e:
             print(f"Initial embedding failed (non-fatal, continuing): {e}")
 
-        # Step 4: Enrich (with retry)
+        # Step 4: Enrich (with retry, skip already-enriched)
         pipeline_status.status = "enriching"
         enriched = 0
         for c in all_contractors:
+            # Skip if already enriched from a prior run
+            if c.enriched_at is not None:
+                enriched += 1
+                pipeline_status.total_enriched = enriched
+                continue
             pipeline_status.progress = f"Enriching {enriched + 1}/{len(all_contractors)}: {c.company_name}"
             try:
                 data = await _retry_async(
@@ -154,10 +155,15 @@ async def run_full_pipeline(zip_code: str = "10013"):
                 print(f"Enrichment failed for {c.company_name} after retries: {e}")
             await asyncio.sleep(1)  # Rate limiting
 
-        # Step 5: Score (RAG-enhanced, with retry)
+        # Step 5: Score (RAG-enhanced, with retry, skip already-scored)
         pipeline_status.status = "scoring"
         scored = 0
         for c in all_contractors:
+            # Skip if already scored from a prior run
+            if c.scored_at is not None:
+                scored += 1
+                pipeline_status.total_scored = scored
+                continue
             pipeline_status.progress = f"Scoring {scored + 1}/{len(all_contractors)}: {c.company_name}"
             try:
                 # Reload from DB to get enrichment data
